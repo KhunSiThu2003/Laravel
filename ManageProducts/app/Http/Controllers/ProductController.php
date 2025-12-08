@@ -6,16 +6,16 @@ use App\Http\Requests\StoreproductRequest;
 use App\Http\Requests\UpdateproductRequest;
 use App\Models\Product;
 use App\Models\Category;
-use Illuminate\Http\Request; // This line was missing
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-
+use Illuminate\Support\Facades\Storage; // 添加 Storage 类用于处理文件上传
 
 class ProductController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request) // This Request needs the import
+    public function index(Request $request)
     {
         $search = $request->input('search');
         $products = Product::with('category')
@@ -60,6 +60,11 @@ class ProductController extends Controller
         $product->height = $request->height;
         $product->status = $request->status ?? 'draft';
 
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('products', 'public');
+            $product->image = $imagePath;
+        }
+
         $product->save();
 
         return redirect()->route('product.index')->with('success', 'Product created successfully!');
@@ -100,6 +105,20 @@ class ProductController extends Controller
         $product->height = $request->height;
         $product->status = $request->status ?? 'draft';
 
+        if ($request->hasFile('image')) {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+
+            $imagePath = $request->file('image')->store('products', 'public');
+            $product->image = $imagePath;
+        } elseif ($request->has('remove_image')) {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+                $product->image = null;
+            }
+        }
+
         $product->save();
 
         return redirect()->route('product.index')->with('success', 'Product updated successfully!');
@@ -110,8 +129,13 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
+        }
+
         $product->delete();
 
         return redirect()->route('product.index')->with('success', 'Product deleted successfully!');
     }
 }
+

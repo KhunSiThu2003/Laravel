@@ -53,6 +53,18 @@
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <!-- Left Column - Product Info -->
                     <div class="lg:col-span-2 space-y-8">
+                        <!-- Product Image -->
+                        @if($product->image)
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Product Image</h3>
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <img src="{{ asset('storage/' . $product->image) }}"
+                                     alt="{{ $product->name }}"
+                                     class="w-full max-w-md mx-auto object-cover rounded-lg">
+                            </div>
+                        </div>
+                        @endif
+
                         <!-- Description -->
                         <div>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">Description</h3>
@@ -254,6 +266,18 @@
                                     <span>Edit Product Details</span>
                                 </a>
 
+                                @if($product->image)
+                                <a href="{{ asset('storage/' . $product->image) }}"
+                                   target="_blank"
+                                   class="w-full px-4 py-3 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition flex items-center justify-center space-x-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                    <span>Download Image</span>
+                                </a>
+                                @endif
+
                                 <button type="button"
                                         onclick="navigator.clipboard.writeText('{{ $product->id }}'); alert('Product ID copied to clipboard!');"
                                         class="w-full px-4 py-3 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition flex items-center justify-center space-x-2">
@@ -270,7 +294,7 @@
             </div>
         </div>
 
-        <!-- Activity Timeline (Optional - You can add actual activity logs later) -->
+        <!-- Activity Timeline -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-800">Recent Activity</h3>
@@ -308,3 +332,4 @@
         </div>
     </div>
 @endsection
+
