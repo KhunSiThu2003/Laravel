@@ -267,7 +267,7 @@
                                 </a>
 
                                 @if($product->image)
-                                <a href="{{ asset('storage/' . $product->image) }}"
+                                <a href="{{ asset('storage/' . $product->image) }}" download
                                    target="_blank"
                                    class="w-full px-4 py-3 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition flex items-center justify-center space-x-2">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -8,7 +8,7 @@ use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage; // 添加 Storage 类用于处理文件上传
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -61,7 +61,13 @@ class ProductController extends Controller
         $product->status = $request->status ?? 'draft';
 
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('products', 'public');
+            $file = $request->file('image');
+            $extension = $file->getClientOriginalExtension();
+
+            $filename = 'product-' . uniqid() . '.' . $extension;
+
+            // Store with custom filename
+            $imagePath = $file->storeAs('products', $filename, 'public');
             $product->image = $imagePath;
         }
 
@@ -110,7 +116,13 @@ class ProductController extends Controller
                 Storage::disk('public')->delete($product->image);
             }
 
-            $imagePath = $request->file('image')->store('products', 'public');
+            $file = $request->file('image');
+            $extension = $file->getClientOriginalExtension();
+
+            $filename = 'product-' . uniqid() . '.' . $extension;
+
+            // Store with custom filename
+            $imagePath = $file->storeAs('products', $filename, 'public');
             $product->image = $imagePath;
         } elseif ($request->has('remove_image')) {
             if ($product->image) {
@@ -138,4 +150,3 @@ class ProductController extends Controller
         return redirect()->route('product.index')->with('success', 'Product deleted successfully!');
     }
 }
-
