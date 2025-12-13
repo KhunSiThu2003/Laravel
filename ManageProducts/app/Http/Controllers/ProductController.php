@@ -124,6 +124,7 @@ class ProductController extends Controller
             // Store with custom filename
             $imagePath = $file->storeAs('products', $filename, 'public');
             $product->image = $imagePath;
+            
         } elseif ($request->has('remove_image')) {
             if ($product->image) {
                 Storage::disk('public')->delete($product->image);
