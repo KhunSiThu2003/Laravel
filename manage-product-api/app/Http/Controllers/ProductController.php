@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Product;
-use App\Models\ProductImages;
-use Illuminate\Container\Attributes\Storage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage as FacadesStorage;
 
 class ProductController extends Controller
 {
@@ -17,16 +15,12 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $products = Product::with('images')->get();
-        return response()->json($products);
-    }
+        $products = Product::with(['category', 'images'])->get();
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        return response()->json([
+            'success' => true,
+            'data' => $products
+        ]);
     }
 
     /**
@@ -37,27 +31,26 @@ class ProductController extends Controller
         DB::beginTransaction();
 
         try {
-            $product = new Product();
-            $product->name = $request->name;
-            $product->description = $request->description;
-            $product->price = $request->price;
-            $product->category_id = $request->category_id;
-            $product->stock = $request->stock ?? 0;
-            $product->status = $request->status ?? 0;
-            $product->save();
+            $product = Product::create($request->validated());
 
             if ($request->hasFile('images')) {
-                $imageCount = 1;
+                $imageCount = 1; 
 
                 foreach ($request->file('images') as $image) {
+       
                     $extension = $image->getClientOriginalExtension();
-                    $customName = time() . '_' . $imageCount . '.' . $extension;
+
+                    $customName = strtolower(str_replace(' ', '_', $product->name))
+                                . '_' . time()
+                                . '_' . $imageCount
+                                . '.' . $extension;
+
+                    // Store in 'public/product_images' folder
                     $path = $image->storeAs('product_images', $customName, 'public');
 
-                    $productImages = new ProductImages();
-                    $productImages->product_id = $product->id;
-                    $productImages->image_path = $path;
-                    $productImages->save();
+                    $product->images()->create([
+                        'image_path' => $path,
+                    ]);
 
                     $imageCount++;
                 }
@@ -66,16 +59,15 @@ class ProductController extends Controller
             DB::commit();
 
             return response()->json([
+                'success' => true,
                 'message' => 'Product created successfully',
-                'product' => $product->load('images')
-            ], 201);
-
+                'data' => $product->load('images', 'category')
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-
             return response()->json([
-                'message' => 'Failed to create product',
-                'error' => $e->getMessage()
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -85,15 +77,12 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        //
-    }
+        $product->load(['category', 'images']);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Product $product)
-    {
-        //
+        return response()->json([
+            'success' => true,
+            'data' => $product
+        ]);
     }
 
     /**
@@ -101,7 +90,55 @@ class ProductController extends Controller
      */
     public function update(UpdateProductRequest $request, Product $product)
     {
-        //
+        DB::beginTransaction();
+
+        try {
+            $product->update($request->validated());
+
+            if ($request->hasFile('images')) {
+
+                // Delete old images
+                foreach ($product->images as $oldImage) {
+                    if (Storage::disk('public')->exists($oldImage->image_path)) {
+                        Storage::disk('public')->delete($oldImage->image_path);
+                    }
+                }
+
+                $product->images()->delete();
+
+                $imageCount = 1;
+
+                foreach ($request->file('images') as $image) {
+
+                    $extension = $image->getClientOriginalExtension();
+
+                    $customName = strtolower(str_replace(' ', '_', $product->name))
+                                . '_' . time() . '_' . $imageCount . '.' . $extension;
+                    $path = $image->storeAs('product_images', $customName, 'public');
+
+                    $product->images()->create([
+                        'image_path' => $path,
+                    ]);
+
+                    $imageCount++;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product updated successfully',
+                'data' => $product->load('images', 'category')
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -109,32 +146,19 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
-        DB::beginTransaction();
 
-        try {
-            foreach ($product->images as $image) {
-                if (FacadesStorage::disk('public')->exists($image->image_path)) {
-                    FacadesStorage::disk('public')->delete($image->image_path);
-                }
+        foreach ($product->images as $image) {
+            if (Storage::disk('public')->exists($image->image_path)) {
+                Storage::disk('public')->delete($image->image_path);
             }
-
-            ProductImages::where('product_id', $product->id)->delete();
-
-            $product->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Product and associated images deleted successfully'
-            ], 200);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'message' => 'Failed to delete product',
-                'error' => $e->getMessage()
-            ], 500);
         }
+
+        $product->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Product deleted successfully'
+        ]);
     }
+
 }
