@@ -95,25 +95,34 @@ class ProductController extends Controller
         try {
             $product->update($request->validated());
 
-            if ($request->hasFile('images')) {
+            // Handle image deletion
+            if ($request->has('remove_images') && is_array($request->remove_images)) {
+                $imagesToDelete = $product->images()
+                    ->whereIn('id', $request->remove_images)
+                    ->get();
 
-                // Delete old images
-                foreach ($product->images as $oldImage) {
-                    if (Storage::disk('public')->exists($oldImage->image_path)) {
-                        Storage::disk('public')->delete($oldImage->image_path);
+                foreach ($imagesToDelete as $image) {
+                    // Delete file from storage
+                    if (Storage::disk('public')->exists($image->image_path)) {
+                        Storage::disk('public')->delete($image->image_path);
                     }
+                    // Delete record from database
+                    $image->delete();
                 }
+            }
 
-                $product->images()->delete();
+            // Handle new image uploads
+            if ($request->hasFile('new_images')) {
+                $imageCount = $product->images()->count() + 1;
 
-                $imageCount = 1;
-
-                foreach ($request->file('images') as $image) {
-
+                foreach ($request->file('new_images') as $image) {
                     $extension = $image->getClientOriginalExtension();
 
                     $customName = strtolower(str_replace(' ', '_', $product->name))
-                                . '_' . time() . '_' . $imageCount . '.' . $extension;
+                                . '_' . time()
+                                . '_' . $imageCount
+                                . '.' . $extension;
+
                     $path = $image->storeAs('product_images', $customName, 'public');
 
                     $product->images()->create([
@@ -129,8 +138,9 @@ class ProductController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Product updated successfully',
-                'data' => $product->load('images', 'category')
+                'data' => $product->fresh()->load(['category', 'images'])
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -140,6 +150,7 @@ class ProductController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Remove the specified resource from storage.
